@@ -1,0 +1,58 @@
+#version 330
+//shaderpipe.vs
+
+layout (location = 0) in vec4 Position;
+
+uniform mat4 gWVP;
+
+out vec4 Color;
+
+void main()
+{
+    // pos[Ipx] = make_float4(scale*PP[Ip].x_present,-scale*PP[Ip].z_present,-scale*PP[Ip].y_present,  1.0f);
+
+   float scale = 0.00002;  // reduce XY meters to +-1.0 
+   float vertscale = .02;  // reduce Z meters to 0.0 -.2
+    //gl_Position = vec4(Position, 1.0);   // gWVP * vec4
+    //gl_Position = vec4(scale*Position[0],-scale*Position[1],scale*Position[2],1.0);   // gWVP * vec4
+    //gl_Position = gWVP*vec4(scale*Position[0],.5*scale*Position[2],-scale*Position[1],1.0);   // gWVP * vec4
+    //gl_Position = gWVP*vec4(scale*Position[0],0.75*scale*Position[2],-scale*Position[1],1.0);   // gWVP * vec4
+    gl_Position = gWVP*vec4(scale*Position[0],vertscale*Position[2],-scale*Position[1],1.0);   // gWVP * vec4
+    gl_Position[2] = - gl_Position[2];
+    
+//  scalecolor = 0:6 after subtracting 2.
+    float scalecolor = Position[3]-2.;
+    float r=0.; float g=0.; float b=0.;
+    if (scalecolor<1.0)
+    {g=     (scalecolor    ); r=1.0; b=0.0; }
+    else if (scalecolor<2.0)
+    {r= 1.-(scalecolor-1.0 ); g=1.0; b=0.; }
+    else if (scalecolor<3.0)
+    {b=    (scalecolor-2.0 ); g=1.0; r=0.; }
+    else if (scalecolor<4.0)
+    {g= 1.-(scalecolor-3.0 ); b=1.0; r=0.; }
+    else if (scalecolor< 5.0)
+    {r=    (scalecolor-4.0 ); b=1.0; g=0.; }
+    else if (scalecolor<6.0)
+    {b= 1.-(scalecolor-5.0 ); r=1.0; g=0.; } 
+    else
+    { r=1.0; g=0.0; b=0.; }
+
+    Color = vec4(r,g,b,1.0);   // below -.05
+    if (Position[3] < 1.001)
+    {    Color = vec4(0.0,0.0,0.0,.01);   // grounded, nearly invisible
+    }
+    if (Position[3] < 0.0001) 
+    {    Color = vec4(1.0,1.0,1.0,.2);   // white border
+    }
+
+    //scalecolor = 1.0-scalecolor;
+    //r=scalecolor/steps; g=1.-scalecolor/steps; b=0.0;
+
+    //Color = vec4(r,g,b,scalecolor/steps);   // below -.05
+
+
+
+
+
+}

@@ -1,0 +1,348 @@
+NUM_PARTICLEs
+100000
+filetemplate
+/media/tom/A8TLinux/NOSnetcdf/%d%02d/nos.cbofs.fields.%d%02d%02d.t%02dz.n%03d.nc
+isfvcom
+0
+year
+2020
+month
+08
+day
+28
+hour
+2
+LONmid
+-76.10
+LONwidth
+3.
+LATmid
+37.0675
+LAThieght
+4.0
+KH
+1.0
+KV
+0.000001
+rand_spread
+500.
+Dot_Size
+2
+ReleaseIncrement
+0.
+pulse_duration
+1.
+pulse_spacing
+0.
+depthcolorinterval
+4.
+Colortype
+ColorByTidal
+Layout
+AreaFill
+FillBay
+
+
+#####EndDataBeginComments#####
+Pipe_Sources
+FillBay
+
+
+
+Possibilities for 
+enum class Layout { AreaFill, Pipe_Sources, FillBay, BorderBay}
+enum class ColorModes {ColorByRelease, ColorByAge, ColorByPulse, ColorByDepth, ColorByOrigin };
+
+Pipell: -76.48 39.175  Baltimore Harbor
+        -76.10  37.0675   Just inside mouth of Bay
+
+    filetemplates  examples:
+    /media/tom/MyBookAllLinux/NOSnetcdf/201912/nos.cbofs.regulargrid.20191207.t18dz.n006.nc
+
+    /home/tom/code/NOSfiles/%d%02d/nos.cbofs.fields.%d%02d%02d.t%02dz.n%03d.nc
+    /run/media/tom/MyBookAllLinux/NOSnetcdf/%d%02d/nos.cbofs.regulargrid.%d%02d%02d.t%02dz.n%03d.nc
+    /run/media/tom/a0424e16-61c8-4925-a6a0-1634d7b37e77/home/tom/code/NOSfiles/%d%02d/nos.cbofs.fields.%d%02d%02d.t%02dz.n%03d.nc
+    /run/media/tom/LinuxData/NOSfiles/%d%02d/nos.cbofs.fields.%d%02d%02d.t%02dz.n%03d.nc
+NUM_PARTICLEs
+41780  smallest number that will work? 
+
+Layout:
+    Pipe_Sources:  Can set up to 10 seperate release points. 
+    Releases at each location are near surface within a circle of diameter rand_spread meters. 
+
+    FullBay:  Particles are placed near surface at each of the nodes within the domain. As there are 
+    more particles than nodes, there will be a spread of points around each node of diameter "rand_spread" m. 
+
+    AreaFill:  Particles are distributed within elements according to the size of the
+    elements in an attempt to make the distribution more uniform.  It is more uniform, but
+    as there are now a huge number in the outer region, it does not appear to be worthwhile.
+    Better to let similar number in each triangle, hmmmm..
+    
+    BoxRows, BorderBay are out of date, and should be removed.
+    particles.cpp contains the routine which sets the initial Particle positions:
+    void PPartInit(struct PPart *host_P, struct MMesh *MM, 
+           struct CControl *CC, int num_P)
+
+Release modes:
+    The particles are released into the grid when time_now passes PP[ip].Release_time.
+    All times use real times expressed in seconds. MM[0].time_init, MM[0].time_now 
+    PPartInit sets Release_time according to several choices:
+    
+    All at once, with no time delay:
+    PP[ip].Release_time = MM[0].time_init + 0.0;
+
+    Increment time of release:
+      Particles appear continuously until all are moving.
+    ReleaseIncrement is set as time spacing between.  Will affect duration of releasing.
+    Particle number ip will be released after ReleaseIncrement*ip, its order in the large array.    
+    PP[ip].Release_time = MM[0].time_init + CC->ReleaseIncrement*ip;  
+
+    Pulse releases.
+        Can be used to emphasize groups of particles released at particular points in the tidal cycle.
+        Specify:
+        pulse_duration: The duration of a pulse, say 1 hour = 3600.s, 
+        pulse_spacing:  Time between pulses: , 
+                        say every 1/2 lunar cycle = 12.42 / 2. = 22356. sec.   
+            PP[ip].Release_time = MM[0].time_init + 1.+ ip*CC->ReleaseIncrement;
+              + floor(CC->ReleaseIncrement*ip/(CC->pulse_duration)) *(CC->pulse_spacing);
+
+    The Release modes are all actually the same equation as Pulse Release. 
+    For each mode these values must be set:
+        Pulse releases:
+            pulse_spacing
+            pulse_duration
+            ReleaseIncrement
+        Incremental releases:
+            pulse_spacing = 0.0;
+            pulse_duration = 1.0;
+            ReleaseIncrement
+        All at once:
+            pulse_spacing = 0.0;
+            pulse_duration = 1.0;
+            ReleaseIncrement = 0.0;
+
+Color Modes:
+    Colors are specified by a color map which is continuous through 
+    the first six rgb colors: 
+    red     100
+    yellow  110
+    green   010
+    teal    011
+    blue    001
+    cyan    101
+    red     100
+    Alternate colormaps should be considered. Depth is now possible
+    The colormap is applied in the shader.vs. The input to the shader is
+    through the fourth variable of the pos[] 4vector [X,Y,Z,C]
+    C (aka ColorClass) carries a couple of other details.  
+    C=0 is a white border point.
+    C=1 is an invisible point, used for grounded or not yet running points
+    C = 2.0 - 7.9  The projection into the color map.
+    The projection to the shader color array is 
+    Color = vec4(r,g,b,1.0);
+    The fourth location is a transparency. For now hard coded in the shader.vs
+    The width of the ColorMap when used to register time is set by 
+    age_class, which is supposed to correspond to 0-6 colors to represent classes by age.
+    It might be used to represent the full time scale of the colormap 0-6 = 0-ageclass
+    
+    ColorByRelease=0: Color by time at release:
+        Each is different color at release, so the source slowly blends through 
+        the color map. Each keeps its initial color as it moves around.
+            double agesec = PP[Ip].Release_time - MM[0].time_init;
+            double NumColors = 6.; 
+            ColorClass = (agesec/MM[0].age_class) ; 
+            while (ColorClass > NumColors) ColorClass-=NumColors;
+            ColorClass+=2.; 
+
+    ColorByAge=1:  Age since release: 
+        All are same color at release, and blend through the color map
+        as they age. ageclass scales time to the colormap. 
+            double agesec = PP[Ip].Release_time - MM[0].time_now;
+            double NumColors = 6.; 
+            ColorClass = (agesec/MM[0].age_class) ; 
+            while (ColorClass > NumColors) ColorClass-=NumColors; 
+            ColorClass+=2.; 
+ 
+    ColorByPulse=2: 
+        Related to Release by Pulse, this is intended to color each 
+        released pulse uniquely to identify paths by phase of tide.
+                double agesec = PP[Ip].Release_time - MM[0].time_init;
+                double NumColors = 6.; 
+                ColorClass = floor(agesec/MM[0].pulse_spacing) ; //% NumColors;
+
+    ColorByDepth=3:
+        Scale depth into ColorClass using depthcolorinterval
+            double NumColors = 6.; 
+            ColorClass = -(PP[Ip].z_present/MM[0].depthcolorinterval); 
+            while (ColorClass > NumColors) ColorClass-=NumColors; 
+            ColorClass+=2.; 
+
+    ColorByOrigin=4:  Color by the point of origin. By Pipe number for Pipe_Sources,
+    or by location, by Longitude for FullBay.  
+
+
+Movement State:
+    Fundamental modes are : 
+    moving=1, waiting=3, aground=2, white border=0 {PP[ip].state= 0,1,2,3}
+    Each time step the modes are evaluated relative to their Release Schedule 
+    and current mode.
+    Only moving are passed through the moving calculations.
+    All are plotted, and therefore evaluated for Color Mode.
+
+
+Examples:
+0) ColorByOrigin
+    A full bay of points colored by their initial Longitude.  Very pretty.
+
+KH
+1.0
+KV
+0.000001
+rand_spread
+500.
+Dot_Size
+2
+ReleaseIncrement
+0.
+pulse_duration
+1.
+pulse_spacing
+0.
+depthcolorinterval
+4.
+Colortype
+ColorByOrigin
+Layout
+FillBay   
+
+1)    Full Bay, Colored by Depth, Release all at start
+
+KH
+1.0
+KV
+0.000001
+rand_spread
+500.
+Dot_Size
+4
+ReleaseIncrement
+0.
+pulse_duration
+1.
+pulse_spacing
+0.
+depthcolorinterval
+4.
+Colortype
+ColorByDepth
+Layout
+FillBay
+
+Colortype
+ColorbyTidal
+Layout
+AreaFill   
+
+
+2)  Two Pipes, Color by Age since Release, 
+    Incremental, even spaced Release times
+
+KH
+2.0
+KV
+0.000001
+Pipell
+-76.48
+39.175
+Pipell
+-76.10
+37.0675
+rand_spread
+500.
+Dot_Size
+4
+ReleaseIncrement
+4.
+pulse_duration
+1.
+pulse_spacing
+0.
+age_class
+43200.
+Colortype
+ColorByAge
+Layout
+Pipe_Sources   
+
+3)  Two Pipes, Color by Age at Release
+    Incremental, even spaced Release time
+
+KH
+2.0
+KV
+0.000001
+Pipell
+-76.48
+39.175
+Pipell
+-76.10
+37.0675
+rand_spread
+500.
+Dot_Size
+4
+ReleaseIncrement
+12.
+pulse_duration
+1.
+pulse_spacing
+0.
+age_class
+172800.
+Colortype
+ColorByRelease
+Layout
+Pipe_Sources   
+
+3)  Two Pipes, Color by Age Since Release
+    Pulsed Release times 
+    Example: 1/2 hour pulse released every 1/2 lunar cycle
+     pulse_spacing = 12.42h / 2. = 22356. sec
+
+KH
+2.0
+KV
+0.000001
+Pipell
+-76.48
+39.175
+Pipell
+-76.10
+37.0675
+rand_spread
+500.
+Dot_Size
+4
+ReleaseIncrement
+1.
+pulse_duration
+3600.
+pulse_spacing
+10800.
+age_class
+32400.
+Colortype
+ColorByPulse
+Layout
+Pipe_Sources   
+
+
+
+
+
+
+double ocean_time(ocean_time) ;
+		ocean_time:long_name = "time since initialization" ;
+		ocean_time:units = "seconds since 2016-01-01 00:00:00" ;
+		ocean_time:calendar = "gregorian_proleptic" ;
+		ocean_time:field = "time, scalar, series" ;
