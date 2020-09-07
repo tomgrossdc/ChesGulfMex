@@ -1,6 +1,9 @@
 # CudaParticleMover
 Particle tracker using Nvidia Cuda cores and NetCDF files from NOAA/NOS
 
+Sept 2020 updates include support for FVCOM as well as ROMS.  Example input files
+are in directory CControl.  
+
 Building the code:
 Use a computer with an Nvidia graphics card. 
 Install Netcdf libraries
