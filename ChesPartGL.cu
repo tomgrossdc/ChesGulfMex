@@ -45,9 +45,44 @@ bool getRunAction(){ return runaction; }
 
 // thread method to be developed for disk reading
 //std::thread t12 ;
+void UpDData();
+int DDataNum = 10;
 
 curandState_t* states;
 
+void UpDData()
+{
+    // Thread programme to run continuously in background 
+    // Will change value of a global counter
+
+    while(DDataNum>=0)
+    {
+        if (DDataNum==0) {
+            // DDataNum == 0 is flag to cause a full datafile read to DD[0].DD3[3]
+            printf("\n\n ******************Read DDataFile to DD3[3] = %d  ",DD[0].DD3[3]);
+
+            string newername;
+            if (DD[0].IsFVCOM) 
+              {
+                newername = NetCDFfiledateG(DD[0].filetemplate,DD);
+                ReadFieldNetCDFG(newername,DD[0].DD3[3],DD,MM);
+              }
+            else
+              {
+                newername = NetCDFfiledate(DD[0].filetemplate,DD);
+                ReadFieldNetCDF(newername,DD[0].DD3[3],DD,MM);
+            }
+            printf("***************** Finished Read DDataFile \n");
+            cout<< newername << endl<<endl;
+        
+        }
+
+    
+        DDataNum+=1;
+        //printf(" display i=%d, DDataNum=%d \n",i, DDataNum);
+        this_thread::sleep_for(chrono::milliseconds(2) );
+    }
+}
 
 void computeFPS()
 {
@@ -95,8 +130,9 @@ bool initGL()
 
     // default initialization
     // background color  234,255,199,1  is noaa map color 
-    //glClearColor(234./256,225./256.,199./256.,0.0);  // 0.0050, 0.005, 0.0050, 1.0);  
-    glClearColor(0.,0.,0.,1.0);  // black or grey: 0.0050, 0.005, 0.0050, 1.0);  
+    //glClearColor(234./256,225./256.,199./256.,0.0);  // NOAA color  
+    glClearColor(234./256.-.2,225./256.-.2,199./256.-.2,0.0);  // Darker NOAA color 
+    //glClearColor(0.,0.,0.,1.0);  // black or grey: 0.0050, 0.005, 0.0050, 1.0);  
     glColor4f(0.0,1.0,0.0,1.0);   // set color
     //glDisable(GL_DEPTH_TEST);
 
@@ -164,6 +200,12 @@ bool GLmoveparticle(struct PPart *PP, struct MMesh *MM, struct DData *DD)
     CompileShaders(MM[0].shadervs, MM[0].shaderfs);    
 
 
+
+        // Launch UpDData() threaded.  Will run in background till end of time
+        std::thread t(UpDData );
+        //std::thread t1g(ReadFieldNetCDFG, std::ref(newername),std::ref(DD[0].DD3[3]),
+        //                std::ref(DD),std::ref(MM) );
+                
 
         // run the cuda part from routine display 
         // specified in glutDisplayFunc(display);
@@ -247,7 +289,18 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
 //printf("After cuda move3d time_now = %fs %ghr\n",time_now, time_now/3600.);
     float time_frac=(time_now - DD[DD[0].DD3[0]].time)/(DD[DD[0].DD3[2]].time - DD[DD[0].DD3[0]].time);
     bool timetest =  (time_frac > .75);
+
+    //  Dummy counter reset of UpDData flag
+    //if (DDataNum>1000) { 
+    //    printf("\n\n\n ****************\n RunCuda reset of DDataNum=%d\n ****************\n\n\n",DDataNum);
+    //    DDataNum=0;
+    //}
+
+
+
     if (timetest ){
+
+        
         //  Every hour a new data file is needed. Read dev_DD to obtain time_now
         
         // Assume or test that the fourth ReadData thread is finished and move to dev_DD  BROKEN
@@ -255,6 +308,7 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
         
         //  Update DD3  
         for (int i=0; i<4 ; i++)DD[0].DD3[i]=(DD[0].DD3[i]+1)%4;
+
         
         // DD3[3] is next spot to be updated, will be updated in this section
         //  Thread this off to execute while elsewhere.
@@ -262,10 +316,12 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
         
         DD[0].ToDay +=3600;  // for hourly files
         string newername;
+
+/*
         if (DD[0].IsFVCOM) 
-            {newername = NetCDFfiledateG(DD[0].filetemplate,DD);}
+        {newername = NetCDFfiledateG(DD[0].filetemplate,DD);}
         else
-            {newername = NetCDFfiledate(DD[0].filetemplate,DD);}
+        {newername = NetCDFfiledate(DD[0].filetemplate,DD);}
         //string newername = NetCDFfiledate(DD[0].filetemplate,DD);
         cout<< newername << endl;
         
@@ -274,8 +330,8 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
         //strftime(&fps[80],80, "more Time= %F %R.", gmtime(&MM[0].ToDay));
         //glutSetWindowTitle(fps);
         
-
-        bool RunThreadRead = true;
+        
+        bool RunThreadRead = false;
         if (RunThreadRead)
         {
             if (DD[0].IsFVCOM) 
@@ -298,7 +354,7 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
                 //t2.join();
                 //printf("after second join\n");
             }
-
+            
         }
         else
         {
@@ -311,8 +367,11 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
                 ReadFieldNetCDF(newername,DD[0].DD3[3],DD,MM);
             }
         }
+*/        
+        //  Reset of UpDData flag to cause call to read data by threaded UpDData()
+        DDataNum=0;
+        printf("\n\n\n ****************\n RunCuda DDataNum=%d\n ****************\n\n\n",DDataNum);
         
-
 
 
 
@@ -540,6 +599,12 @@ void keyboard(unsigned char key, int /*x*/, int /*y*/)
         }  break;
         case(100) :  // d translate right
         {        translate_x += 0.03f;
+        }  break;
+        case(114) :  // r magnify move away
+        {        translate_z -= 0.03f;
+        }  break;
+        case(102) :  // f shrink  move toward
+        {        translate_z += 0.03f;
         }  break;
           
           
@@ -839,7 +904,8 @@ for (int itime=0; itime<CUDA_STEPS; itime++){
             }
             else if (MM[0].color_mode == 2) { // ColorByPulse
                 double agesec = PP[Ip].Release_time - MM[0].time_init;
-                ColorClass = floor(agesec/MM[0].pulse_spacing) ; //% NumColors;
+                //ColorClass = floor(agesec/(MM[0].pulse_spacing)) ; //% NumColors;
+                ColorClass = agesec/(10.*MM[0].pulse_spacing) ; //% NumColors;
                 while (ColorClass > NumColors) ColorClass-=NumColors; //% NumColors;
             }
             else if (MM[0].color_mode == 3) {// ColorByDepth
