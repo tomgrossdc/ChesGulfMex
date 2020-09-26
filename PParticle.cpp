@@ -77,7 +77,7 @@ switch(CC->layout){
                 float MX = (X0+X1+X2)/3.;
                 float MY = (Y0+Y1+Y2)/3.;
                 int NPpT= int(num_P*AreaTri/AreaBay);
-                 if (iele%37==0) printf(" iele=%d  NPpT = %d \n",iele, NPpT);
+                // if (iele%37==0) printf(" iele=%d  NPpT = %d \n",iele, NPpT);
                 //NPpT = 10;
                 NPpT = num_P/nele;
                 for (int i=0; i<NPpT; i++){
@@ -185,7 +185,23 @@ printf("%6d %d %g %g \n",ip,ipipe,host_P[ip].XYZstart[0],host_P[ip].XYZstart[1])
         //CC->shaderfs="shaderfill.fs";      
         //CC->shadervs="shaderdepth.vs";
         //CC->shaderfs="shaderpipe.fs";      
-       //case  fill bay with a jiggle at nodal points
+// First Fill the white border:
+        int ipcount = 0;
+        for (int ip=MM[0].firstnodeborder; ip<MM[0].node; ip++) {
+            // White border points
+            host_P[ipcount].x_present = MM[0].X[ip] ;  
+            host_P[ipcount].y_present = MM[0].Y[ip] ;  
+            host_P[ipcount].z_present = 0.0;    //MM[0].depth[imesh]/2.;
+            host_P[ipcount].state = 0;  // white boundary, never move
+            host_P[ipcount].age = -57600*60;
+
+            host_P[ipcount].num_P = num_P;
+            host_P[ipcount].p_id = ip;
+            host_P[ipcount].i_ele = 55;
+            ipcount++; 
+        }
+        
+               //case  fill bay with a jiggle at nodal points
         printf("PPartInit  MM[0].firstnodeborder = %d   MM[0].nodes=%d \n", MM[0].firstnodeborder,MM[0].node);
         //MM[0].firstnodeborder=99827;
         int long  imesh =MM[0].firstnodeborder/2;     //  99827  108049;
@@ -195,7 +211,7 @@ printf("%6d %d %g %g \n",ip,ipipe,host_P[ip].XYZstart[0],host_P[ip].XYZstart[1])
         float latp=CC->LATmid+CC->LAThieght/2.;
         float latm=CC->LATmid-CC->LAThieght/2.;
         printf(" lonm lonp %g %g  latm latp %g %g \n",lonm,lonp,latm,latp);
-        for (int ip=0; ip<num_P; ip++) {
+        for (int ip=ipcount; ip<num_P; ip++) {
 
             // find a imesh within the bounds
             bool imeshtestcontinue=true;
@@ -317,6 +333,8 @@ printf("%6d %d %g %g \n",ip,ipipe,host_P[ip].XYZstart[0],host_P[ip].XYZstart[1])
 
     cout <<" Particle PPartInit CC->shadervs = "<< CC->shadervs << endl;
     cout <<" Particle PPartInit CC->shaderfs = "<< CC->shaderfs << endl;
+
+    for (int ip=0; ip<num_P; ip++) host_P[ip].time_now=MM[0].time_init;
 
 }
 

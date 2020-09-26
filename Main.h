@@ -153,6 +153,7 @@ struct MMesh {
     int color_mode;
     float age_class; 
     float pulse_spacing;
+    float pulse_duration;
     float depthcolorinterval=5.;
     int runmode = 0;
     int Dot_Size;
@@ -206,7 +207,7 @@ float * matrix_RotTrPer(float old0[16],
 
 //extern struct CControl CC;
 
-//#include <CControl.h>
+
 #include "CControl.h"
 
 #endif

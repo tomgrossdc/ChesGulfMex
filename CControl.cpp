@@ -1,4 +1,13 @@
 // CControl.h   
+#include <iostream>
+using namespace std;
+#include <fstream>
+#include <string.h>
+#include <math.h>
+#include <iomanip>
+#include <time.h>
+#include <stdlib.h>
+
 // struct CControl to be included in main.h
 #define DT_SEC 4.5                // 3.0 very smooth but ponderous
 

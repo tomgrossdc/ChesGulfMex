@@ -24,6 +24,90 @@
    All temporary index will start with i_, such as i_time_future. 
 ----------------------------------------------------------------------*/
 
+//  BuildMM will replace all the building statements in Mainpart.cu
+
+void BuildMM(struct MMesh *MM, struct CControl CC)
+{
+    tm today = {}; 
+    today.tm_year =CC.year-1900 ; 
+    today.tm_mon = CC.month-1;
+    today.tm_mday = CC.day ;       
+    today.tm_hour = CC.hour ;   // To make file name agree, else hours 0,1,2  map to 1,2,3 
+    time_t ToDay = timegm(&today);   // conversion to UTC, not like mktime which is local
+    char fps[256];
+    strftime(fps,80, "  mainpart startup  timegm(&today) = %A %G %b %d   %R ", gmtime(&ToDay));
+    cout<<fps<<endl;
+    //ToDay = mktime(&today);
+    //strftime(fps,80, "  mainpart startup  mktime(&today) = %A %G %b %d   %R ", gmtime(&ToDay));
+    //cout<<fps<<endl;
+
+    MM[0].ToDay = ToDay;
+    //MM[0].ToDay = today;
+
+
+//    MM[0].filetemplate = CC.filetemplate;
+//    string newername = NetCDFfiledate(MM[0].filetemplate,MM);
+//    cout<< " newername from NETCDFfiledate(MM)"<< newername <<endl;
+    MM[0].filetemplate = CC.filetemplate;
+    string newername;
+    if(CC.IsFVCOM)
+        { newername = NetCDFfiledateG(MM[0].filetemplate,MM);}
+    else 
+        { newername = NetCDFfiledate(MM[0].filetemplate,MM);}
+    cout<< " newername from NETCDFfiledate(MM)"<< newername <<endl;
+
+    
+    
+
+        //   icase-1 is used to include Regular call during testing.  Fix later...
+        for (int icase=1; icase<4; icase++){
+
+         int iMM=icase-1;   //  fill up MM[0] with U, MM[1] with V etc.
+         printf(" \n\n Read Lat and Lon and Set MM[%d]\n",icase-1);
+         if(CC.IsFVCOM) 
+            {ReadMeshFieldG(newername,icase,MM);}
+         else
+            {ReadMeshField(newername,icase,MM);}
+
+            printf(" Convert Lat Lon to Meters   node= %d \n",MM[iMM].node);
+            float DEG_PER_METER= 90./(10000*1000);
+            for (int i=0;i<MM[iMM].node;i++) {
+               MM[iMM].X[i] = (( MM[iMM].Lon[i]-CC.LONmid) /DEG_PER_METER )*cos(CC.LATmid * PI/180.);
+               MM[iMM].Y[i] =  ( MM[iMM].Lat[i]-CC.LATmid) /DEG_PER_METER;
+               }
+
+        cout<<endl<<"Launch delaunator and build MM["<<iMM<<"].ele, tri_connect, a_frac "<<endl;
+
+         MakeMeshEle(iMM, MM);
+         //node = MM[icase-1].node;
+         //nsigma = MM[icase-1].nsigma;
+
+         // Identify interior elements as MM[iMM].goodele[iele]=true;
+         for (int i=0; i< MM[iMM].nele; i++){
+             MM[iMM].goodele[i]=true;
+            if (MM[iMM].ele[i][0]>MM[iMM].firstnodeborder) MM[iMM].goodele[i]=false;
+            if (MM[iMM].ele[i][1]>MM[iMM].firstnodeborder) MM[iMM].goodele[i]=false;
+            if (MM[iMM].ele[i][2]>MM[iMM].firstnodeborder) MM[iMM].goodele[i]=false;
+         }
+         }
+
+    MM[0].shadervs=CC.shadervs;
+    MM[0].shaderfs=CC.shaderfs;
+    MM[0].run_mode=CC.run_mode;
+    MM[0].color_mode=CC.color_mode;
+    MM[0].Dot_Size = CC.Dot_Size; 
+    MM[0].depthcolorinterval = CC.depthcolorinterval;
+    MM[0].age_class = CC.age_class;
+    MM[0].pulse_spacing = CC.pulse_spacing;
+    MM[0].pulse_duration = CC.pulse_duration;
+    MM[0].KH=CC.KH;
+    MM[0].KV=CC.KV;
+
+
+
+
+   printf(" \n\n\n\nEnd of BuildMM\n\n\n\n\n");
+}
 
 
 ///////////////////////////////////////////////////////

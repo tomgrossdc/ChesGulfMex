@@ -11,7 +11,7 @@ void AddOutsideLonLatG(int iMM, bool Readtxt, struct MMesh *MM);
 
 void MakeMeshEle(int iMM, struct MMesh *MM);
 
-
+void BuildMM(struct MMesh *MM, struct CControl CC);
 
 
 #endif

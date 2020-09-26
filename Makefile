@@ -44,6 +44,7 @@ CPPFLAGS        = $(INCLUDES) -g
 CPP             =nvcc 
 	
 SRCS = MMeshC.cpp DDataC.cpp PParticle.cpp MakeShader.cpp MMeshG.cpp DDataG.cpp
+SRCS += CControl.cpp
 #HINCS = MMesh.h DData.h Main.h PPart.h
 #triangulation.cpp
 #date.cpp 

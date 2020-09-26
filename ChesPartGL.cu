@@ -282,6 +282,7 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
    
 
     //int DD33=1;   256,64  72*32 = 2304 cuda cores
+    // 144,32  all cudas enumerated once
     move3d<<< 144,32 >>>(dptr,dev_P,dev_MM,dev_DD,states);
     cudaDeviceSynchronize();
     DD[0].time_now += CUDA_STEPS* DT_SEC;   // 0.01f;   
@@ -303,7 +304,7 @@ void runCuda(struct cudaGraphicsResource **vbo_resource)
         
         //  Every hour a new data file is needed. Read dev_DD to obtain time_now
         
-        // Assume or test that the fourth ReadData thread is finished and move to dev_DD  BROKEN
+        // Assume or test that the fourth ReadData thread is finished and move to dev_DD
         cudaMemcpy(dev_DD,DD,DDSizeGeneral,cudaMemcpyHostToDevice);
         
         //  Update DD3  
@@ -916,7 +917,7 @@ for (int itime=0; itime<CUDA_STEPS; itime++){
             }
             else if (MM[0].color_mode == 4) {// ColorByOrigin
                 // Really just color by Latitude of XYZstart with offset and scaling in meters
-                ColorClass = (PP[Ip].XYZstart[1]+315000.)/60000.; 
+                ColorClass = (PP[Ip].XYZstart[1]+315000.)/10000.; 
                 while (ColorClass < 0.0) ColorClass+=10000.; //% NumColors;
                 while (ColorClass > NumColors) ColorClass-=NumColors; //% NumColors;
             }

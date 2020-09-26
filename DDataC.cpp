@@ -9,6 +9,79 @@
   in mainpart.cu
 
 /*------------------------------------------------------------*/    
+
+// Initialize the DD arrays in Mainpart.cu
+void BuildDD(struct DData *DD, struct MMesh *MM, struct CControl CC)
+{
+       for (int i=0; i<4; i++) 
+        {
+            DD[i].filetemplate = CC.filetemplate;
+            DD[i].IsFVCOM = CC.IsFVCOM;
+            DD[i].IsNGOFS = false;   // gets set to true when ww read fails
+        }   
+
+    
+    // Initialize some DD data, 
+    // Zero out all Velocities to initialize
+    //  Makes the coastline capture grounded particles, as it is not read as a velocity
+    DD[0].ToDay =MM[0].ToDay;
+    //DD[0].ToDay = timegm(&today);
+    DD[0].ToDay -= 7200;    // two hours to correct for += below, and some other hour
+    for(int ifour = 0; ifour<4; ifour++){
+        for (int i=0; i<NODE; i++){
+            for(int isig=0; isig<NSIGMA; isig++){
+                DD[ifour].U[isig][i]=0.0;
+                DD[ifour].V[isig][i]=0.0;
+                DD[ifour].W[isig][i]=0.0;
+            }
+        }
+        DD[0].ToDay +=3600;  // for hourly files
+ 
+        //string newername = NetCDFfiledate(DD[0].filetemplate,DD);
+        //ReadDataRegNetCDF(newername,ifour,DD,MM);
+        //ReadFieldNetCDF(newername,ifour, DD, MM);
+        string newername;
+        //ReadDataRegNetCDF(newername,ifour,DD,MM);
+        if (CC.IsFVCOM)
+        {   newername = NetCDFfiledateG(DD[0].filetemplate,DD);
+            cout<<"IsFVCOM  newername= "<<newername<< endl;
+            ReadFieldNetCDFG(newername,ifour, DD, MM);}
+        else
+        {   newername = NetCDFfiledate(DD[0].filetemplate,DD);
+            cout<<"IsNOTFVCOM  newername= "<<newername<< endl;
+            ReadFieldNetCDF(newername,ifour, DD, MM);}
+
+
+        printf("ReadData finished,  DD[%d].time=%f sec time=%g hr \n\n",ifour,DD[ifour].time,DD[ifour].time/3600.);
+        //int id = 50; int isig=2;
+        //printf("ReadData DD[%d].time %fs %ghr \n  DD[%d].UVW[%d][%d] %g %g %g \n  MM[0].XY[%d]= %g  %g\n\n",
+        //  ifour, DD[ifour].time,DD[ifour].time/3600,
+        //  ifour,isig, id,DD[ifour].U[isig][id],DD[ifour].V[isig][id],DD[ifour].W[isig][id],
+        //  id,MM[0].X[id],MM[0].Y[id]);
+    }    
+    cout<<endl;
+    float time_now = (DD[0].time + DD[1].time)/2.;   // timefrac = .25
+    for (int i=0; i<4; i++) DD[i].time_now = time_now; 
+    MM[0].time_init = time_now;
+    MM[0].Time_Init = MM[0].ToDay;
+    MM[0].Time_Init += 1800; 
+    printf(" mainpart  MM[0].time_init = %f DD[0].time = %f \n",MM[0].time_init,DD[0].time);
+    char fps[256];
+    strftime(fps,80, " mainpart  MM[0].Time_Init = %A %G %b %d   %R ", gmtime(&MM[0].Time_Init));
+    cout<<fps<<endl;
+
+
+    for (int i=0; i<4; i++) DD[0].DD3[i]=i;
+
+
+   printf(" \n\n\n\nEnd of BuildDD \n\n\n\n\n");
+
+
+}
+
+
+
+
 void ReadData(double time_now, int ifour, DData *DD, MMesh *MM)
 {
 

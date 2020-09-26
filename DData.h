@@ -11,6 +11,7 @@ using namespace netCDF;
 using namespace netCDF::exceptions;
 
 
+void BuildDD(struct DData *DD, struct MMesh *MM, struct CControl CC);
 
 void ReadData(double time_now, int ifour, struct DData *DD, struct MMesh *MM);
 
